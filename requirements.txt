@@ -1,2 +1,4 @@
 Flask==0.12
+Flask-Bcrypt==0.7.1
+Flask-SocketIO==2.8.2
 peewee==2.8.5

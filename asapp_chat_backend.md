@@ -2,9 +2,9 @@
 
 ### Application structure.
 
-- Models (3?)
-- Routes + controller actions/Flask functions that return json
-- mysql server
+- Models
+- Routes + controller actions/Flask; functions that return json
+- mysql server(?)
 - proxy server?
 
 
@@ -12,9 +12,19 @@
 
 ###Models
 
-user has many messages
+user has many messages through channels (sent)
+user has many messages through channels ( received )
+user has many channels
 
-user belongs to many messages (as recipient)
+
+
+1. user.messages  => all message user has written
+2. message.users => all users that received the message?
+
+3.
+
+- user has many messages
+- user belongs to many messages (as recipient)
 
 message has and belongs to many users?
 
@@ -63,7 +73,7 @@ Support the following requests:
 
 - **Create User**
 
-Takes a username and password and creates a new user in a persisted data store.
+Takes a user_name and password and creates a new user in a persisted data store.
 
 - **Send Message**
 
@@ -75,3 +85,21 @@ Takes a sender, recipient, and message and saves that to the data store. Three d
 - **Fetch Messages**
 
 Takes two users and loads all messages sent between them. This call should also take two optional parameters in order to support pagination: the number of message to show per page and which page to load.
+
+
+
+Flow of the app:
+
+1) Login and Auth
+- @api.before_request except for login/signup
+- verify_password => validate_auth_token
+- User types in login user_name, and password
+- Join channel
+
+
+
+
+3) Send message
+- (See message displayed above chat box, or, JSON returned with content)
+- Message JSON: Text
+- img_url:
