@@ -103,3 +103,35 @@ Flow of the app:
 - (See message displayed above chat box, or, JSON returned with content)
 - Message JSON: Text
 - img_url:
+
+
+
+# Routes:
+
+## Resource
+
+### User
+
+- Create a new user (POST /users)
+- Delete a user (account) (DELETE /users/:id)
+- Edit user info (PUT /users/:id)
+- Login a user (POST /sessions)
+- Logout a user (DELETE /sessions/:id OR remove the JWT from storage)
+
+### Channel
+
+- See all channel participants
+- Create a channel
+- Join channel (POST /channels/:id)  (create channelUser)
+- Leave channel (DELETE /channels/:id) (delete channelUser)
+
+### Messages
+
+- Fetch all messages for a given channel (GET /channel/:id/messages?)
+- Send a message (POST /messages)
+
+### For later:
+
+- Edit last message (PUT /messages/:id)
+- Delete channel
+
