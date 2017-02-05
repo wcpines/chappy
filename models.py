@@ -1,7 +1,7 @@
-import datetime
 from app import db
-from peewee import (Model, SqliteDatabase, CharField,
-                    DateTimeField, ForeignKeyField, TextField)
+from peewee import Model, SqliteDatabase, CharField, DateTimeField, ForeignKeyField, TextField
+from playhouse.fields import PasswordField
+import datetime
 
 
 # base model for specifying DB, and any shared methods/behaviors.
@@ -19,23 +19,13 @@ class BaseModel(Model):
         database = db
 
 
+# BaseUser should give me set_password and check_password methods
 class User(BaseModel):
     username = CharField(unique=True)
     email = CharField(unique=True)
     phone = CharField(null=True)
-    password = CharField()
-
-    def is_authenticated(self):
-        return True
-
-    def is_active(self):
-        return True
-
-    def is_anonymous(self):
-        return False
-
-    def get_id(self):
-        return unicode(self.id)
+    password = PasswordField()
+    #  password = CharField()
 
     def __repr__(self):
         return (
@@ -81,6 +71,7 @@ class Message(BaseModel):
             f"Message("
             f"id={self.id!r}, "
             f"user_id={self.user_id!r}, "
+            f"channel_id={self.channel_id!r}, "
             f"text_content={self.text_content!r}, "
             f"img_url={self.img_url!r}, "
             f"video_url={self.video_url!r}, "
@@ -90,8 +81,6 @@ class Message(BaseModel):
 
     class Meta:
         order_by = ('-created_at',)
-
-
 
 
 class ChannelUser(BaseModel):
