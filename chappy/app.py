@@ -150,35 +150,39 @@ def fetch_or_send_to_channel(channel_id):
     user_id = decode_identity()
     if request.method == 'GET':
         messages = Message.select().where(Message.channel_id == channel_id)
-        return jsonify(messages)
+        return jsonify([message.__dict__['_data'] for message in messages])
     else: #POST
         request_json = request.get_json()
-        embed()
         new_message = Message.create(
             channel_id=channel_id,
             user_id=user_id,
             text_content=request_json.get('textContent'),
             img_url=request_json.get('imgUrl'),
             video_url=request_json.get('videoUrl')
-        ).__dict__['_data']
+        )
 
-        return jsonify(new_message)
+        return jsonify(new_message.__dict__['_data'])
 
 @fj.jwt_required
-@app.route('/channel/<int:channel_id>/messages/<int:message_id>', methods=['PUT', 'DELETE'])
-def edit_or_delete_message(message_id):
+@app.route('/channels/<int:channel_id>/messages/<int:message_id>', methods=['PUT', 'DELETE'])
+def edit_or_delete_message(channel_id,message_id):
     if request.method == 'PUT':
-        edited_message = Message.get(Message.id == message_id)
-        edit_message_query = Message.update(
-            text_content=request_json.get('textContent'),
-            img_url=request_json.get('imgUrl'),
-            video_url=request_json.get('videoUrl')
-        ).where(Message.id == message_id)
+        edit_message_query = (
+            Message
+            .update(
+                text_content=request.get_json().get('textContent') or Message.text_content,
+                img_url=request.get_json().get('imgUrl') or Message.img_url,
+                video_url=request.get_json().get('videoUrl') or Message.video_url
+            )
+            .where(Message.id == message_id and Message.channel_id == channel_id)
+        )
         edit_message_query.execute()
-        return jsonify(new_message)
+
+        edited_message = Message.get(Message.id == message_id and Message.channel_id == channel_id)
+        return jsonify(edited_message.__dict__['_data'])
+
     else: # DELETE
-        message = Message.get(Message.id == message_id)
-        message.delete_instance()
+        Message.get(Message.id == message_id).delete_instance()
         return jsonify({"log_message": f"Successfully deleted message {message_id!r}"})
 
 if __name__ == '__main__':

@@ -1,14 +1,15 @@
 URL=http://127.0.0.1:5000
 
 .PHONY: run-test
-run-test: home \
-	get-signup \
-	post-signup \
+run-test: post-signup \
 	create-channel \
 	get-channel-peeps \
 	join-channel \
 	leave-channel \
-	send-message
+	send-message \
+	fetch-messages\
+	edit-message\
+	delete-message
 
 
 .PHONY: home
@@ -46,12 +47,22 @@ leave-channel:
 .PHONY: send-message
 send-message:
 	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a new message' videoUrl='https://www.youtube.com/watch?v=nHSESdnfpOk'
+	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a second message' imgUrl='https://images-na.ssl-images-amazon.com/images/G/01/img15/pet-products/small-tiles/23695_pets_vertical_store_dogs_small_tile_8._CB312176604_.jpg'
+	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a third message'
+
+.PHONY: fetch-messages
+fetch-messages:
+	http --auth-type=jwt --auth=${TOKEN}: ${URL}/channels/1/messages
+
+.PHONY: edit-message
+edit-message:
+	http --auth-type=jwt --json --auth=${TOKEN}: PUT ${URL}/channels/1/messages/1 textContent='an edited message!'
+
+.PHONY: delete-message
+delete-message:
+	http --auth-type=jwt --auth=${TOKEN}: DELETE ${URL}/channels/1/messages/1
 
 
-# curlpost /channels/1 # join a channel
-# curldelete /channels/1 # leave channel
-# curlget /channel/1/messages # read all messages (limit most recent 50)
-# curlpost /channel/1/messages '{"textContent": "test message for you!", "imgUrl": "", "videoUrl":""}' # send a message to channel
 # curlput /channel/1/messages/1 '{"textContent": "test message for you!", "imgUrl": "", "videoUrl":""}'  # edit last message, diff on frontend?
 # curldelete /channel/1/messages/1  # delete last message
 
