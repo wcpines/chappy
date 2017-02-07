@@ -3,29 +3,19 @@ URL=http://127.0.0.1:5000
 .PHONY: run-test
 run-test: post-signup \
 	create-channel \
-	get-channel-peeps \
 	join-channel \
-	leave-channel \
 	send-message \
 	fetch-messages\
 	edit-message\
 	delete-message
 
 
-.PHONY: home
-home:
-	http ${URL}
-
-.PHONY: get-signup
-get-signup:
-	http ${URL}/signup
-
 .PHONY: post-signup
 post-signup:
 	http --json POST ${URL}/signup username='wcpines' email='wcpines@gmail.com' password='testing'
 	http --json POST ${URL}/signup username='testUser' email='bla@bla.com' password="testing1"
 
-
+# login:
 TOKEN=$(shell echo `http --json POST ${URL}/login email='wcpines@gmail.com' password='testing' | jq --raw-output .access_token`)
 
 .PHONY: create-channel

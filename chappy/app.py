@@ -11,6 +11,9 @@ from pytz import timezone
 from chappy.config import Config
 from chappy.models import User, Channel, ChannelUser, Message, init_db
 
+from adapters.embedly_adapter import get_video_metadata, get_img_metadata
+from adapters.twilio_adapter import message_user
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -49,40 +52,26 @@ def expired_token_callback():
     }), 200
 
 
-
-@app.route('/protected', methods=['GET'])
-
-@fj.jwt_required
-def protected():
-    # Access the identity of the current user with get_jwt_identitydecode_id()
-    current_user = decode_identity()
-    return jsonify({'hello_from': current_user}), 200
-
-@app.route('/', methods=['GET'])
-def index():
-    return jsonify({'message' : 'This would normally render a SPA homepage(?)'})
-
-
-@app.route('/signup', methods=['GET', 'POST'])
+##################################
+# App routes and conroller actions
+##################################
+@app.route('/signup', methods=['POST'])
 def signup():
-    if request.method == 'GET':
-        return jsonify({"log_message": f"Successfully rendered the signup page"})
-    else:
-        try:
-            user = User.create(
-                username = request.get_json().get('username'),
-                email = request.get_json().get('email'),
-                phone = request.get_json().get('phone'),
-                password = request.get_json().get('password') # supposedly encrypted by PasswordField
-            )
+    try:
+        user = User.create(
+            username = request.get_json().get('username'),
+            email = request.get_json().get('email'),
+            phone = request.get_json().get('phone'),
+            password = request.get_json().get('password') # supposedly encrypted by PasswordField
+        )
 
-            jwt = {'access_token': fj.create_access_token(identity=user.id)}
-            return jsonify(jwt), 200
+        jwt = {'access_token': fj.create_access_token(identity=user.id)}
+        return jsonify(jwt), 200
 
-        except Exception as e:
-            #  return jsonify({"log_message": "{} already in use".format(e.args[0].split(".")[-1])})
-            print(e)
-            return jsonify({"log_message": "Error! " u"😲  " "Check application logs"}), 400
+    except Exception as e:
+        #  return jsonify({"log_message": "{} already in use".format(e.args[0].split(".")[-1])})
+        print(e)
+        return jsonify({"log_message": "Error! " u"😲  " "Check application logs"}), 400
 
 
 @app.route('/login', methods=['POST'])
@@ -97,12 +86,32 @@ def login():
     else:
         return jsonify({"log_message": "Bad username or password"}), 401
 
+@fj.jwt_required
+@app.route('/users/<int:user_id>', methods=['PUT'])
+def edit_user(user_id):
+    if user_id != decode_identity():
+        return jsonify({"log_message": "Unauthorized user"})
+    else:
+        edit_user_query = (
+            User
+            .update(
+                username=request.get_json().get('username') or User.username,
+                email=request.get_json().get('email') or User.email,
+                phone=request.get_json().get('phone')
+            )
+            .where(User.id == user_id)
+        )
+        edit_user_query.execute()
+        edited_user = User.get(User.id == user_id)
+        return jsonify({'username': edited_user.username, 'email': edited_user.email, 'phone': edited_user.phone})
+
 
 # creating a conversation *requires* two users, inviter and invitee
 @fj.jwt_required
 @app.route('/channels', methods=['POST'])
 def create_channel():
     user_id = decode_identity()
+
     title = request.get_json().get('title')
     channel_invitee_id = request.get_json().get('channelInviteeId')
     channel = Channel.create(title=title)
@@ -110,9 +119,10 @@ def create_channel():
     ChannelUser.get_or_create(user_id=user_id, channel_id=channel.id)
     return jsonify({"log_message": f"Successfully created channel {channel.id!r}"})
 
+
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>', methods=['GET'])
-def get_channel_participants(channel_id):
+def fetch_channel_participants(channel_id):
     channel_users = (
         ChannelUser
         .select(ChannelUser, User)
@@ -127,10 +137,11 @@ def get_channel_participants(channel_id):
 
 
 @fj.jwt_required
-#FIXME: Should leaving a channel be nested? e.g /users/1/channels/1
+#FIXME: Should leaving a channel be nested? e.g '/users/<int:user_id>/channels/<int:channel_id>'
 @app.route('/channels/<int:channel_id>', methods=['POST', 'DELETE'])
 def join_or_leave_channel(channel_id):
     user_id = decode_identity()
+
     username = User.get(User.id == user_id).username
     if request.method == 'POST':
         ChannelUser.get_or_create(user_id=user_id, channel_id=channel_id)
@@ -144,28 +155,56 @@ def join_or_leave_channel(channel_id):
 
         return jsonify({"log_message": f"{username!r} successfully left channel {channel_id!r}"})
 
-@fj.jwt_required
-@app.route('/channels/<int:channel_id>/messages', methods=['GET', 'POST'])
-def fetch_or_send_to_channel(channel_id):
-    user_id = decode_identity()
-    if request.method == 'GET':
-        messages = Message.select().where(Message.channel_id == channel_id)
-        return jsonify([message.__dict__['_data'] for message in messages])
-    else: #POST
-        request_json = request.get_json()
-        new_message = Message.create(
-            channel_id=channel_id,
-            user_id=user_id,
-            text_content=request_json.get('textContent'),
-            img_url=request_json.get('imgUrl'),
-            video_url=request_json.get('videoUrl')
-        )
 
-        return jsonify(new_message.__dict__['_data'])
+@fj.jwt_required
+@app.route('/channels/<int:channel_id>/messages', methods=['GET'])
+@app.route('/channels/<int:channel_id>/messages<int:limit>/<int:offset>', methods=['GET'])
+def fetch_messages_from_channel(channel_id, limit=50, offset=1):
+    user_id = decode_identity()
+
+    messages = Message.select().where(Message.channel_id == channel_id)
+    return jsonify([message.__dict__['_data'] for message in messages])
+
+
+@fj.jwt_required
+@app.route('/channels/<int:channel_id>/messages', methods=['POST'])
+def send_message_to_channel(channel_id):
+    user_id = decode_identity()
+
+    request_json = request.get_json()
+    video_url = request_json.get('videoUrl')
+
+    if video_url:
+        img_url = None
+        video_data = get_video_metadata(video_url)
+    elif img_url and video_url is None:
+        img_url = request_json.get('imgUrl')
+        img_data = get_img_metadata(img_url)
+    else:
+        pass
+
+    new_message = Message.create(
+        channel_id=channel_id,
+        user_id=user_id,
+        text_content=request_json.get('textContent'),
+        img_url=img_url,
+        video_url=video_url,
+        img_html = img_data.get('html'),
+        img_height = img_data.get('height'),
+        img_width = img_data.get('width'),
+        video_html = video_data.get('html'),
+        video_source = video_data.get('source'),
+        video_length = video_data.get('length'),
+    )
+
+    return jsonify(new_message.__dict__['_data'])
+
 
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>/messages/<int:message_id>', methods=['PUT', 'DELETE'])
-def edit_or_delete_message(channel_id,message_id):
+def edit_or_delete_message_from_channel(channel_id,message_id):
+    user_id = decode_identity()
+
     if request.method == 'PUT':
         edit_message_query = (
             Message
@@ -189,4 +228,3 @@ if __name__ == '__main__':
     from IPython import embed
     init_db()
     app.run(debug=Config.DEBUG)
-
