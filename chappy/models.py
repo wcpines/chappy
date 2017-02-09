@@ -4,8 +4,6 @@ from playhouse.fields import PasswordField
 from peewee import Model, SqliteDatabase, CharField, DateTimeField,\
         ForeignKeyField, TextField, IntegerField
 
-# base model for specifying DB, and any shared methods/behaviors.
-# this information is not
 
 class BaseModel(Model):
     created_at = DateTimeField(default=datetime.datetime.utcnow)
@@ -19,7 +17,6 @@ class BaseModel(Model):
         database = db
 
 
-# BaseUser should give me set_password and check_password methods
 class User(BaseModel):
     username = CharField(unique=True)
     email = CharField(unique=True)

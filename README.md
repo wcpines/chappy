@@ -14,7 +14,6 @@
       * [User](#user)
       * [Channel](#channel)
       * [Messages](#messages)
-      * [routes/actions would be handled by react-router:](#routes-actions-would-be-handled-by-react-router)
 
 <!-- vim-markdown-toc -->
 
@@ -29,32 +28,32 @@
 ####Create User
 
 POST `/signup`
-Takes a username and password and creates a new user in a persisted data store.
+Takes a username and password and creates a new user.
 
 ####Create a Channel
 
 POST `/channels`
 
-Takes the current user's id, an invitee id, and a channel ID.
+Takes the current user's id, an invitee id (second user ID), and a title.
 
 ***NB:***
   - Deleting/archiving a channel is not yet supported
-  - Currently no record of channel creator/invitor
+  - Currently no record of channel creator/inviter
 
 ####Send a Message
 
 POST `/channels/[channel_id]/messages`
-Takes a sender, recipient, and various message fields (see below) and saves that to the data store.  Three different message types are supported:
+Takes a sender, recipient, and various message fields (see below), save it to the data store.  Three different message types are supported:
 
-1. text-only,
-2. an image link,
-3. a video link
+1. text-only
+2. image (url)
+3. video (url)
 
 If a video link is present, the img URL is ignored.
-If either media type is present, the API will call a third party API to populate the following metadata:
+If either media type is present, the API will call a third party API (embedly) to populate the following metadata:
 
 - width and height for the image, an embeddable img URL
-- length of the video in seconds, source domain, an embeddable iframe
+- length of the video, source domain, an embeddable iframe
 
 
 **Fetch Messages**
@@ -72,7 +71,7 @@ Loads all messages for a given channel. Takes two optional parameters in order t
 #### User
 
 - has many messages (send)
-- (has many messages through channels (receive))
+- [has many messages through channels (receiving)]
 - has many channels through channelusers
 - has many channelusers
   - `username`
@@ -83,7 +82,7 @@ Loads all messages for a given channel. Takes two optional parameters in order t
 #### Message
 
 - has one user (send)
-- (has many users through channels (receive))
+- [has many users through channels (receive)]
 - has one channel
   - `user_id`
   - `channel_id`
@@ -128,14 +127,9 @@ JWT tokens are for session persistence/resource authorization
 
 - Create a channel (POST `/channels`)
 - Join channel (POST `/channels/<int:channel_id>`)  (create ChannelUser)
-- Leave channel (DELETE `/channels/:id`); deletes ChannelUser objects
+- Leave channel (DELETE `/channels/:id`) (deletes ChannelUser)
 
 #### Messages
 
 - Fetch all messages for a given channel (GET  `/channels/<int:channel_id>/messages`
 - Send a message (POST `/channels/<int:channel_id>/messages`)
-
-#### routes/actions would be handled by react-router:
-
-- rendering home/index page and other 'show' pages (user profile, login, signup, etc)
-- signout (removes JWT token from browser)

@@ -4,9 +4,12 @@ URL=http://127.0.0.1:5000
 run-test: post-signup \
 	create-channel \
 	join-channel \
+	leave-channel \
 	send-message \
-	fetch-messages\
-	edit-message\
+	send-img-message \
+	send-video-message \
+	fetch-messages-with-offset \
+	edit-message \
 	delete-message
 
 
@@ -16,7 +19,7 @@ post-signup:
 	http --json POST ${URL}/signup username='testUser' email='bla@bla.com' password="testing1"
 
 # login:
-TOKEN=$(shell echo `http --json POST ${URL}/login email='wcpines@gmail.com' password='testing' | jq --raw-output .access_token`)
+TOKEN=`http --json POST ${URL}/login email='wcpines@gmail.com' password='testing' | jq --raw-output .access_token`
 
 .PHONY: create-channel
 create-channel:
@@ -36,13 +39,19 @@ leave-channel:
 
 .PHONY: send-message
 send-message:
-	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a new message' videoUrl='https://www.youtube.com/watch?v=nHSESdnfpOk'
-	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a second message' imgUrl='https://images-na.ssl-images-amazon.com/images/G/01/img15/pet-products/small-tiles/23695_pets_vertical_store_dogs_small_tile_8._CB312176604_.jpg'
-	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='a third message'
+	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='this message has no media'
 
-.PHONY: fetch-messages
-fetch-messages:
-	http --auth-type=jwt --auth=${TOKEN}: ${URL}/channels/1/messages
+.PHONY: send-img-message
+send-img-message:
+	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='this message has an image link' imgUrl='https://images-na.ssl-images-amazon.com/images/G/01/img15/pet-products/small-tiles/23695_pets_vertical_store_dogs_small_tile_8._CB312176604_.jpg'
+
+.PHONY: send-video-message
+send-video-message:
+	http --auth-type=jwt --json --auth=${TOKEN}: POST ${URL}/channels/1/messages textContent='this message has a video link' videoUrl='https://www.youtube.com/watch?v=nHSESdnfpOk'
+
+.PHONY: fetch-messages-with-offset
+fetch-messages-with-offset:
+	http --auth-type=jwt --auth=${TOKEN}: ${URL}/channels/1/messages?offset=1\&limit=50
 
 .PHONY: edit-message
 edit-message:
@@ -51,8 +60,3 @@ edit-message:
 .PHONY: delete-message
 delete-message:
 	http --auth-type=jwt --auth=${TOKEN}: DELETE ${URL}/channels/1/messages/1
-
-
-# curlput /channel/1/messages/1 '{"textContent": "test message for you!", "imgUrl": "", "videoUrl":""}'  # edit last message, diff on frontend?
-# curldelete /channel/1/messages/1  # delete last message
-

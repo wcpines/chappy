@@ -19,13 +19,13 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 jwt = fj.JWTManager(app)
-# socketio = SocketIO(app)
+#  socketio = SocketIO(app)
 
 ###################
 # JWT SESSION SETUP
 ###################
 
-# FIXME: get_jwt_identity is borked. Wrote my own:
+# FIXME: fj.get_jwt_identity appears to be borked; I wrote my own:
 def decode_identity():
     algorithm = fj.config.__dict__['ALGORITHM']
     secret = app.config.get('SECRET_KEY')
@@ -71,7 +71,7 @@ def signup():
     except Exception as e:
         #  return jsonify({"log_message": "{} already in use".format(e.args[0].split(".")[-1])})
         print(e)
-        return jsonify({"log_message": "Error! " u"😲  " "Check application logs"}), 400
+        return jsonify({"log_message": "Error! " " :( " "Check application logs"}), 400
 
 
 @app.route('/login', methods=['POST'])
@@ -158,44 +158,58 @@ def join_or_leave_channel(channel_id):
 
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>/messages', methods=['GET'])
-@app.route('/channels/<int:channel_id>/messages<int:limit>/<int:offset>', methods=['GET'])
-def fetch_messages_from_channel(channel_id, limit=50, offset=1):
+def fetch_messages_from_channel(channel_id, offset=1, limit=50):
+    embed()
     user_id = decode_identity()
 
-    messages = Message.select().where(Message.channel_id == channel_id)
+    messages = Message.select().where(Message.channel_id == channel_id).paginate(offset, limit)
     return jsonify([message.__dict__['_data'] for message in messages])
 
 
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>/messages', methods=['POST'])
 def send_message_to_channel(channel_id):
+    """
+    If the message has a video URL included, use embedly adapter to fetch
+    metadata to include on the object, and ignore any image URL.  If image
+    url present, do the opposite
+    """
     user_id = decode_identity()
 
-    request_json = request.get_json()
-    video_url = request_json.get('videoUrl')
+    video_url = request.get_json().get('videoUrl')
+    img_url = request.get_json().get('imgUrl')
 
     if video_url:
-        img_url = None
         video_data = get_video_metadata(video_url)
-    elif img_url and video_url is None:
-        img_url = request_json.get('imgUrl')
-        img_data = get_img_metadata(img_url)
-    else:
-        pass
 
-    new_message = Message.create(
-        channel_id=channel_id,
-        user_id=user_id,
-        text_content=request_json.get('textContent'),
-        img_url=img_url,
-        video_url=video_url,
-        img_html = img_data.get('html'),
-        img_height = img_data.get('height'),
-        img_width = img_data.get('width'),
-        video_html = video_data.get('html'),
-        video_source = video_data.get('source'),
-        video_length = video_data.get('length'),
-    )
+        new_message = Message.create(
+            channel_id=channel_id,
+            user_id=user_id,
+            text_content=request.get_json().get('textContent'),
+            video_url=video_url,
+            video_html=video_data.get('html'),
+            video_source=video_data.get('source'),
+            video_length=video_data.get('length'),
+        )
+
+    elif img_url and not video_url:
+        img_data = get_img_metadata(img_url)
+
+        new_message = Message.create(
+            channel_id=channel_id,
+            user_id=user_id,
+            text_content=request.get_json().get('textContent'),
+            img_url=img_url,
+            img_html=img_data.get('html'),
+            img_height=img_data.get('height'),
+            img_width=img_data.get('width'),
+        )
+    else:
+        new_message = Message.create(
+            channel_id=channel_id,
+            user_id=user_id,
+            text_content=request.get_json().get('textContent'),
+        )
 
     return jsonify(new_message.__dict__['_data'])
 
@@ -228,3 +242,4 @@ if __name__ == '__main__':
     from IPython import embed
     init_db()
     app.run(debug=Config.DEBUG)
+    #  socketio.run(debug=Config.DEBUG)
