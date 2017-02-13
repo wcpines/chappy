@@ -18,6 +18,5 @@ def get_img_metadata(img_url):
     data_dict = {
         'height': data.get('media').get('height'),
         'width': data.get('media').get('width'),
-        'html': data.get('media').get('url')
     }
     return data_dict

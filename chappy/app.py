@@ -19,28 +19,20 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 jwt = fj.JWTManager(app)
-#  socketio = SocketIO(app)
+socketio = SocketIO(app)
 
 ###################
 # JWT SESSION SETUP
 ###################
 
 # FIXME: fj.get_jwt_identity appears to be borked; I wrote my own:
+
 def decode_identity():
     algorithm = fj.config.__dict__['ALGORITHM']
     secret = app.config.get('SECRET_KEY')
     token = request.headers.get('AUTHORIZATION').split(' ')[1]
     identity = jt.decode(token, secret, algorithm)
     return identity['identity']
-
-
-@jwt.unauthorized_loader
-def unauthorized_token_callback():
-    return jsonify({
-        'status': 401,
-        'sub_status': 101,
-        'log_message': 'User must login or provide valid JWT in request'
-    }), 200
 
 
 @jwt.expired_token_loader
@@ -55,6 +47,7 @@ def expired_token_callback():
 ##################################
 # App routes and conroller actions
 ##################################
+
 @app.route('/signup', methods=['POST'])
 def signup():
     try:
@@ -135,9 +128,7 @@ def fetch_channel_participants(channel_id):
         [{'username': user.username, 'email': user.email} for user in users]
     )
 
-
 @fj.jwt_required
-#FIXME: Should leaving a channel be nested? e.g '/users/<int:user_id>/channels/<int:channel_id>'
 @app.route('/channels/<int:channel_id>', methods=['POST', 'DELETE'])
 def join_or_leave_channel(channel_id):
     user_id = decode_identity()
@@ -145,7 +136,7 @@ def join_or_leave_channel(channel_id):
     username = User.get(User.id == user_id).username
     if request.method == 'POST':
         ChannelUser.get_or_create(user_id=user_id, channel_id=channel_id)
-        return jsonify({"log_message": f"{username!r} successfully joined channel {channel_id!r}"})
+        return jsonify({"log_message": f"{username!r} successfully joined channel", "channelId": channel_id})
     else: # DELETE
         delete_channel_users = ChannelUser.delete().where(
             ChannelUser.channel_id == channel_id and
@@ -155,15 +146,30 @@ def join_or_leave_channel(channel_id):
 
         return jsonify({"log_message": f"{username!r} successfully left channel {channel_id!r}"})
 
+# corresponding realtime events, would be provided via js client
+@socketio.on('join')
+def on_join(data):
+    username = data['username']
+    room = data['room']
+    join_room(room)
+    send(username + ' has entered the room.', room=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    leave_room(room)
+    send(username + ' has left the room.', room=room)
+
+
 
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>/messages', methods=['GET'])
 def fetch_messages_from_channel(channel_id, offset=1, limit=50):
-    embed()
     user_id = decode_identity()
 
     messages = Message.select().where(Message.channel_id == channel_id).paginate(offset, limit)
-    return jsonify([message.__dict__['_data'] for message in messages])
+    return jsonify([message._data for message in messages])
 
 
 @fj.jwt_required
@@ -211,8 +217,9 @@ def send_message_to_channel(channel_id):
             text_content=request.get_json().get('textContent'),
         )
 
-    return jsonify(new_message.__dict__['_data'])
+    socketio.emit('message', new_message._data, room=channel_id, include_self=True)
 
+    return jsonify(new_message._data)
 
 @fj.jwt_required
 @app.route('/channels/<int:channel_id>/messages/<int:message_id>', methods=['PUT', 'DELETE'])
@@ -232,7 +239,7 @@ def edit_or_delete_message_from_channel(channel_id,message_id):
         edit_message_query.execute()
 
         edited_message = Message.get(Message.id == message_id and Message.channel_id == channel_id)
-        return jsonify(edited_message.__dict__['_data'])
+        return jsonify(edited_message._data)
 
     else: # DELETE
         Message.get(Message.id == message_id).delete_instance()
@@ -241,5 +248,5 @@ def edit_or_delete_message_from_channel(channel_id,message_id):
 if __name__ == '__main__':
     from IPython import embed
     init_db()
-    app.run(debug=Config.DEBUG)
-    #  socketio.run(debug=Config.DEBUG)
+    #  app.run(debug=Config.DEBUG)
+    socketio.run(app,debug=Config.DEBUG)

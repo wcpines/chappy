@@ -4,7 +4,6 @@ from playhouse.fields import PasswordField
 from peewee import Model, SqliteDatabase, CharField, DateTimeField,\
         ForeignKeyField, TextField, IntegerField
 
-
 class BaseModel(Model):
     created_at = DateTimeField(default=datetime.datetime.utcnow)
     updated_at = DateTimeField()
@@ -22,7 +21,6 @@ class User(BaseModel):
     email = CharField(unique=True)
     phone = CharField(null=True)
     password = PasswordField()
-    #  password = CharField()
 
     def __repr__(self):
         return (
@@ -112,7 +110,7 @@ class ChannelUser(BaseModel):
 def init_db():
     db.connect()
 
-    #  NOTE: Testing purposes only!
+    #  NOTE: Testing/Dev purposes only!
     ################################################################
     ################################################################
     tables = [User, Channel, Message, ChannelUser]
