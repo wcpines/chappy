@@ -6,13 +6,12 @@ import flask_jwt_extended as fj
 import jwt as jt # see FIXME below
 import peewee
 from playhouse.fields import PasswordField
-from pytz import timezone
 
 from chappy.config import Config
 from chappy.models import User, Channel, ChannelUser, Message, init_db
 
 from adapters.embedly_adapter import get_video_metadata, get_img_metadata
-#  from adapters.twilio_adapter import message_user
+from adapters.twilio_adapter import message_user
 
 
 app = Flask(__name__)
