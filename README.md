@@ -1,9 +1,11 @@
 <!-- vim-markdown-toc Redcarpet -->
 * [Chappy](#chappy)
+  * [Installation](#installation)
     * [Sample services](#sample-services)
       * [Create User](#create-user)
       * [Create a Channel](#create-a-channel)
       * [Send a Message](#send-a-message)
+      * [Fetch Channel Messages](#fetch-channel-messages)
   * [Models](#models)
       * [User](#user)
       * [Message](#message)
@@ -16,9 +18,53 @@
       * [Messages](#messages)
 
 <!-- vim-markdown-toc -->
-
 # Chappy
-*A sample chat app*
+*A sample chat app backend -- WIP*
+
+
+The current version does not have websockets completely implemented. A front-end client would need to poll for new messages every few seconds.
+
+## Installation
+
+1. Clone the repository
+
+  ```sh
+  git clone git@github.com:wcpines/chappy.git
+  ```
+
+2. Create a virtual environment and source it
+
+  ```sh
+  virtualenv chappy
+  source chappy/bin/activate
+  ```
+
+3. Install dependencies:
+
+  ```sh
+   pip install -r requirements.txt
+  ```
+
+**NB: The following environment variables must be defined in order to run the app:**
+
+
+```sh
+export SECRET_KEY=[YOUR OWN SECRET]
+export FLASK_SECRET_KEY_BASE=[YOUR OWN KEY BASE]
+export EMBEDLY_API_KEY=[YOUR OWN API KEY]
+```
+
+
+To test, run the server, and in a separate shell session, run make:
+
+```sh
+$ PYTHONPATH=. python chappy/app.py
+```
+
+
+```sh
+$ make
+```
 
 
 ### Sample services
@@ -36,32 +82,33 @@ POST `/channels`
 
 Takes the current user's id, an invitee id (second user ID), and a title.
 
-***NB:***
-  - Deleting/archiving a channel is not yet supported
-  - Currently no record of channel creator/inviter
+*Note:*
+
+- Deleting/archiving a channel is not yet supported
+- Currently there is no record of a channel's creator/admin
 
 ####Send a Message
 
 POST `/channels/[channel_id]/messages`
-Takes a sender, recipient, and various message fields (see below), save it to the data store.  Three different message types are supported:
+Takes a sender, recipient, channel_id, and various message fields (see below).  Three different message types are supported:
 
 1. text-only
 2. image (url)
 3. video (url)
 
-If a video link is present, the img URL is ignored.
-If either media type is present, the API will call a third party API (embedly) to populate the following metadata:
+If a video url is present, the image URL is ignored.
+If either media type is present, chappy performs a third-party API call to Embedly, and populates the following metadata:
 
-- width and height for the image, an embeddable img URL
-- length of the video, source domain, an embeddable iframe
+- width and height for the image
+- length of the video, source domain, an embeddable iframe with the video
 
 
-**Fetch Messages**
+####Fetch Channel Messages
 
 Loads all messages for a given channel. Takes two optional parameters in order to support pagination:
+
 - `limit`: the number of messages to show per page
 - `offset`: which page to load
-
 
 
 ## Models
@@ -111,9 +158,9 @@ Loads all messages for a given channel. Takes two optional parameters in order t
 
 ## Authentication
 
-Passwords are hashed server-side via Peewee builtin: PasswordField, which uses bcrypt
+Passwords are hashed server-side via the Peewee ORM's builtin `PasswordField`, which uses bcrypt.
 
-JWT tokens are for session persistence/resource authorization
+JWT tokens are for session persistence/resource authorization.
 
 ## Routes/actions
 
@@ -131,5 +178,7 @@ JWT tokens are for session persistence/resource authorization
 
 #### Messages
 
-- Fetch all messages for a given channel (GET  `/channels/<int:channel_id>/messages`
+- Fetch all messages for a given channel (GET  `/channels/<int:channel_id>/messages`)
 - Send a message (POST `/channels/<int:channel_id>/messages`)
+- Edit a message (PUT `/channels/<int:channel_id>/messages/<int:message_id>`)
+- Delete a message (Delete `/channels/<int:channel_id>/messages/<int:message_id>`)

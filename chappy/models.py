@@ -58,14 +58,13 @@ class Message(BaseModel):
     user = ForeignKeyField(User)
     channel = ForeignKeyField(Channel)
     text_content = TextField()
-    img_url = CharField(null=True) # retreive metadata via emebedly before save
-    img_html = TextField(null=True)
+    img_url = CharField(null=True)
     img_height = IntegerField(null=True)
     img_width = IntegerField(null=True)
-    video_url = CharField(null=True) #
+    video_url = CharField(null=True)
     video_html = TextField(null=True)
-    video_source = CharField(null=True) #
-    video_length = IntegerField(null=True) #
+    video_source = CharField(null=True)
+    video_length = IntegerField(null=True)
 
     def __repr__(self):
         return (
@@ -80,6 +79,7 @@ class Message(BaseModel):
             f"video_url={self.video_url!r}, "
             f"video_source={self.video_source!r}, "
             f"video_length={self.video_length!r}, "
+            f"video_html={self.video_html!r}, "
             f"created_at={self.created_at:%Y-%m-%d %H:%M:%S}, "
             f"updated_at={self.updated_at:%Y-%m-%d %H:%M:%S})"
         )

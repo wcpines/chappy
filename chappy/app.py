@@ -12,7 +12,7 @@ from chappy.config import Config
 from chappy.models import User, Channel, ChannelUser, Message, init_db
 
 from adapters.embedly_adapter import get_video_metadata, get_img_metadata
-from adapters.twilio_adapter import message_user
+#  from adapters.twilio_adapter import message_user
 
 
 app = Flask(__name__)
