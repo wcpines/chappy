@@ -71,12 +71,12 @@ $ make
 
 *Complete list of services below under* [Routes/actions](#routes-actions)
 
-####Create User
+#### Create User
 
 POST `/signup`
 Takes a username and password and creates a new user.
 
-####Create a Channel
+#### Create a Channel
 
 POST `/channels`
 
@@ -87,7 +87,7 @@ Takes the current user's id, an invitee id (second user ID), and a title.
 - Deleting/archiving a channel is not yet supported
 - Currently there is no record of a channel's creator/admin
 
-####Send a Message
+#### Send a Message
 
 POST `/channels/[channel_id]/messages`
 Takes a sender, recipient, channel_id, and various message fields (see below).  Three different message types are supported:
@@ -103,7 +103,7 @@ If either media type is present, chappy performs a third-party API call to Embed
 - length of the video, source domain, an embeddable iframe with the video
 
 
-####Fetch Channel Messages
+#### Fetch Channel Messages
 
 Loads all messages for a given channel. Takes two optional parameters in order to support pagination:
 
